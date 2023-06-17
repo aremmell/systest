@@ -33,11 +33,9 @@ compile_systest() {
         mkdir -p "${out_obj_dir}"
     fi
 
-    if [[ -f ${outfile} ]]; then
-        echo_info "Cleaning up..."
-        rm -f ${outfile}
-        rm -f ${out_obj_dir}/*.o
-    fi
+	echo_info "Cleaning up..."
+	rm -f ${outfile}
+	rm -f ${out_obj_dir}/*.o
 
     echo_info "Building ${name}.c ${_sym_arrowr} ${outfile}..."
 
