@@ -71,18 +71,22 @@ compile_systest() {
         prompt_get "Would you like to run ${name} now? (y/n):" "y"
         if [[ ${prompt_val} == "y" || ${prompt_val} = "Y" ]]; then
             _exec=true
+		else
+			_exec=false
         fi
     fi
 
     if [[ ${_exec} = true ]]; then
         if [[ ${3} = true ]]; then
             echo_info "Executing ${out_bin_dir}/${name}..."
-            ${outfile}&
+            ${outfile}
+			return $?
         else
             echo_info "Changing directory to ${out_bin_dir}" \
                       " and executing ${name}..."
             cd "${out_bin_dir}" || error_exit "Failed to change directories; bailing."
-            ./${name}&
+            ./${name}
+			return $?
         fi
     fi
 }
