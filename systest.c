@@ -212,7 +212,7 @@ void check_safefree() {
         printf(RED("safe_free() does NOT reset the pointer!\n"));
 }
 
-int main(int argc, char *argv[]) {
+int main(void) {
 
     printf("\t" BLUE("~~~~~~~~~~ <systest> ~~~~~~~~~~") "\n");
 
@@ -316,13 +316,8 @@ bool systest_pathgetstat(const char* restrict path, struct stat* restrict st, sy
         stat_ret = stat(path, st);
     }
 #else // __WIN__
-        if (!systest_add_slash(base_path)) {
-            systest_safefree(base_path);
-            return false;
-        }
-
         char abs_path[SYSTEST_MAXPATH] = { 0 };
-        snprintf(abs_path, SYSTEST_MAXPATH, "%s%s", base_path, path);
+        snprintf(abs_path, SYSTEST_MAXPATH, "%s\\%s", base_path, path);
 
         stat_ret = stat(abs_path, st);
         systest_safefree(base_path);
@@ -499,13 +494,11 @@ char* systest_getappbasename(void) {
     if (!_validstr(filename))
         return NULL;
 
-    char* bname = strdup(filename);
+    char* retval = systest_getbasename(filename);
+    char* bname  = strdup(retval);
+
     systest_safefree(filename);
-
-    if (!_validstr(bname))
-        return NULL;
-
-    return  systest_getbasename(bname);
+    return bname;    
 }
 
 char* systest_getappdir(void) {
@@ -513,13 +506,11 @@ char* systest_getappdir(void) {
     if (!_validstr(filename))
         return NULL;
 
-    char* dname = strdup(filename);
-    systest_safefree(filename);
+    char* retval = systest_getdirname(filename);
+    char* dname = strdup(retval);
 
-    if (!_validstr(dname))
-        return NULL;    
-   
-    return systest_getdirname(dname);
+    systest_safefree(filename);
+    return dname;
 }
 
 char* systest_getbasename(char* restrict path) {
