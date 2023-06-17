@@ -3,6 +3,7 @@
 
 # annoying Visual Studio files
 .vs
+*.user
 
 # output files
 build/
