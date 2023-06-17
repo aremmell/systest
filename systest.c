@@ -335,6 +335,12 @@ bool systest_pathgetstat(const char* restrict path, struct stat* restrict st, sy
         }
     }
 
+    char* as_str = systest_stattostring(st);
+    if (as_str) {
+        printf("%s = %s\n", path, as_str);
+        systest_safefree(as_str);    
+    }
+
     return true;
 }
 
@@ -551,6 +557,64 @@ bool systest_ispathrelative(const char* restrict path, bool* restrict relative) 
     *relative = (TRUE == PathIsRelativeA(path));
     return true;
 #endif    
+}
+
+char* systest_stattostring(struct stat* restrict st) {
+    if (!_validptr(st))
+        return NULL;
+
+    char* buffer = (char*)calloc(SYSTEST_STAT_BUFFER_SIZE, sizeof(char));
+    if (!buffer) {
+        handle_error(errno, "calloc() failed!");
+        return NULL;
+    }
+
+#if defined(__WIN__)
+# define S_IFIFO _S_IFIFO
+# define S_IRUSR 0x0100
+# define S_IWUSR 0x0080
+# define S_IXUSR 0x0040
+# define S_IRGRP 0x0010
+# define S_IWGRP 0x0400
+# define S_IXGRP 0x0004
+# define S_IROTH 0x0020
+# define S_IWOTH 0x0800
+# define S_IXOTH 0x0008
+#endif
+
+    char* type = "";
+    switch (st->st_mode & S_IFMT) {
+        case S_IFBLK:  type = "block device"; break;
+        case S_IFCHR:  type = "character special"; break;        
+        case S_IFDIR:  type = "directory"; break;        
+        case S_IFIFO:  type = "pipe (fifo)"; break;
+        case S_IFLNK:  type = "symlink"; break;
+        case S_IFREG:  type = "regular"; break;
+        case S_IFSOCK: type = "socket"; break;
+        default:       type = "<unknown>"; break;
+    }
+
+    char mode[32] = {0};
+    snprintf(mode, sizeof(mode), "%c%c%c%c%c%c%c%c%c%c (%03o)",
+        (systest_bittest(st->st_mode & S_IFMT, S_IFDIR) ? 'd' : 
+        (systest_bittest(st->st_mode & S_IFMT, S_IFSOCK) ? 's' : '-')),
+        (systest_bittest(st->st_mode & 0x0FFF, S_IRUSR) ? 'r' : '-'),
+        (systest_bittest(st->st_mode & 0x0FFF, S_IWUSR) ? 'w' : '-'),
+        (systest_bittest(st->st_mode & 0x0FFF, S_IXUSR) ? 'x' : '-'),
+        (systest_bittest(st->st_mode & 0x0FFF, S_IRGRP) ? 'r' : '-'),
+        (systest_bittest(st->st_mode & 0x0FFF, S_IWGRP) ? 'w' : '-'),
+        (systest_bittest(st->st_mode & 0x0FFF, S_IXGRP) ? 'x' : '-'),
+        (systest_bittest(st->st_mode & 0x0FFF, S_IROTH) ? 'r' : '-'),
+        (systest_bittest(st->st_mode & 0x0FFF, S_IWOTH) ? 'w' : '-'),
+        (systest_bittest(st->st_mode & 0x0FFF, S_IXOTH) ? 'x' : '-'),
+        ((st->st_mode & 0x0FFF) & ((S_IRUSR | S_IWUSR | S_IXUSR) |
+            (S_IRGRP | S_IWGRP | S_IXGRP) |
+            (S_IROTH | S_IWOTH | S_IXOTH))));
+
+    snprintf(buffer, SYSTEST_STAT_BUFFER_SIZE, "{ type: %s, size: %ld, "
+        "mode: %s }", type, (long)st->st_size, mode);
+
+    return buffer;
 }
 
 bool systest_add_slash(char* restrict path) {

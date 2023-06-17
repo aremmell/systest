@@ -118,6 +118,8 @@ bool systest_add_slash(char* restrict path);
 
 bool systest_ispathrelative(const char* restrict path, bool* restrict relative);
 
+char* systest_stattostring(struct stat* restrict st);
+
 //
 // utility functions
 //
@@ -160,6 +162,12 @@ void systest_safeclose(int* restrict fd) {
         handle_error(errno, "close() failed!");
 
     *fd = -1;    
+}
+
+/** Checks a bitmask for a specific set of bits. */
+static inline
+bool systest_bittest(uint32_t flags, uint32_t test) {
+    return (flags & test) == test;
 }
 
 #ifdef __cplusplus
