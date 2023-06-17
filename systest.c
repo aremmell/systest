@@ -1,4 +1,5 @@
 #include "systest.h"
+#include "macros.h"
 
 #if defined(_WIN32)
 #   pragma comment(lib, "Shlwapi.lib")
@@ -197,6 +198,11 @@ void check_platform()
 
 void check_safefree() {
     int *ptr = malloc(sizeof(int));
+    if (!ptr) {
+        handle_error(errno, "malloc() failed!");
+        return;
+    }
+
     *ptr = 1234;
     systest_safefree(ptr);
 
@@ -299,6 +305,7 @@ bool systest_pathgetstat(const char* restrict path, struct stat* restrict st, sy
         int fd = open(base_path, open_flags);
         if (-1 == fd) {
             handle_error(errno, "open() failed!");
+            systest_safefree(base_path);
             return false;
         }
 
@@ -309,13 +316,15 @@ bool systest_pathgetstat(const char* restrict path, struct stat* restrict st, sy
         stat_ret = stat(path, st);
     }
 #else // __WIN__
-        char abs_path[SIR_MAXPATH] = {0};
-        if (NULL == PathCombineA(abs_path, base_path, path)) {
-            handle_error(GetLastError(), "PathCombineA() failed!");
-        } else {
-            abs_path[SIR_MAXPATH - 1] = '\0';
-            stat_ret = stat(abs_path, st);
+        if (!systest_add_slash(base_path)) {
+            systest_safefree(base_path);
+            return false;
         }
+
+        char abs_path[SYSTEST_MAXPATH] = { 0 };
+        snprintf(abs_path, SYSTEST_MAXPATH, "%s%s", base_path, path);
+
+        stat_ret = stat(abs_path, st);
         systest_safefree(base_path);
     } else {
         stat_ret = stat(path, st);
@@ -490,11 +499,13 @@ char* systest_getappbasename(void) {
     if (!_validstr(filename))
         return NULL;
 
-    char* retval = systest_getbasename(filename);
-    char* bname  = strdup(retval);
-
+    char* bname = strdup(filename);
     systest_safefree(filename);
-    return bname;
+
+    if (!_validstr(bname))
+        return NULL;
+
+    return  systest_getbasename(bname);
 }
 
 char* systest_getappdir(void) {
@@ -502,11 +513,13 @@ char* systest_getappdir(void) {
     if (!_validstr(filename))
         return NULL;
 
-    char* retval = systest_getdirname(filename);
-    char* dirname = strdup(retval);
-
+    char* dname = strdup(filename);
     systest_safefree(filename);
-    return dirname;
+
+    if (!_validstr(dname))
+        return NULL;    
+   
+    return systest_getdirname(dname);
 }
 
 char* systest_getbasename(char* restrict path) {
@@ -549,6 +562,22 @@ bool systest_ispathrelative(const char* restrict path, bool* restrict relative) 
 #endif    
 }
 
+bool systest_add_slash(char* restrict path) {
+    if (!_validstr(path))
+        return false;
+
+    size_t path_len = strnlen(path, SYSTEST_MAXPATH);
+
+    if (path_len > SYSTEST_MAXPATH - 2)
+        return false;
+
+    if (path[path_len - 1] != '/' && path[path_len - 1] != '\\') {
+        path[path_len] = SYSTEST_PATH_SEP;
+        path[path_len + 1] = '\0';
+    }
+
+    return true;
+}
 
 //
 // utility functions
