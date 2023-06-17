@@ -1,5 +1,8 @@
 # annoying macOS files
 .DS_Store
 
+# annoying Visual Studio files
+.vs
+
 # output files
 build/
