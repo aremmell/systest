@@ -1,7 +1,7 @@
 #ifndef _SYSTEST_H_INCLUDED
 #define _SYSTEST_H_INCLUDED
 
-#if !defined(_WIN32)
+#if !defined(__WIN__)
 # if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 #  define __BSD__
 #  define _BSD_SOURCE
@@ -30,20 +30,23 @@
 # else
 #  define SYSTEST_MAXPATH 1024
 # endif
+# define SYSTEST_MAXHOST 64
 # define SYSTEST_PATH_SEP '/'
-#else // _WIN32
+#else // __WIN__
 # define __WIN__
 # define __WANT_STDC_SECURE_LIB__ 1
 # define WIN32_LEAN_AND_MEAN
 # define WINVER       0x0A00
-# define _WIN32_WINNT 0x0A00
+# define __WIN___WINNT 0x0A00
 # include <windows.h>
 # include <shlwapi.h>
 # include <pathcch.h>
 # include <direct.h>
+# include <winsock2.h>
 # include <io.h>
 
 # define SYSTEST_MAXPATH MAX_PATH
+# define SYSTEST_MAXHOST 256
 # define SYSTEST_PATH_SEP '\\'
 #endif
 
@@ -62,6 +65,7 @@
 #if defined(__APPLE__)
 # define __MACOS__
 # include <mach-o/dyld.h>
+# include <sys/utsname.h>
 #elif defined(__FreeBSD__)
 # include <sys/sysctl.h>
 #endif
@@ -83,6 +87,8 @@ extern "C" {
 // portability test implementations
 //
 
+
+///////////////////////////// file system //////////////////////////////////////
 
 /** Defines how many characters to grow a buffer by which was deemed too small
  * by a system call (with no information regarding the necessary size). */
@@ -114,15 +120,25 @@ char* systest_getappdir(void);
 char* systest_getbasename(char* restrict path);
 char* systest_getdirname(char* restrict path);
 
-bool systest_add_slash(char* restrict path);
-
 bool systest_ispathrelative(const char* restrict path, bool* restrict relative);
 
 char* systest_stattostring(struct stat* restrict st);
 
+bool systest_add_slash(char* restrict path);
+
+/////////////////////////////// network ////////////////////////////////////////
+
+bool systest_gethostname(char hname[SYSTEST_MAXHOST]);
+
+/////////////////////////////// platform ///////////////////////////////////////
+
+bool systest_getuname(struct utsname* name);
+
+
 //
 // utility functions
 //
+
 
 /* this is strictly for use when encountering an actual failure of a system call. 
  * use self_log to report things other than error numbers. */

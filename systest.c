@@ -1,8 +1,9 @@
 #include "systest.h"
 #include "macros.h"
 
-#if defined(_WIN32)
-#   pragma comment(lib, "Shlwapi.lib")
+#if defined(__WIN__)
+# pragma comment(lib, "Shlwapi.lib")
+# pragma comment(lib, "Ws2_32.lib")
 #endif
 
 int num_attempted = 0;
@@ -13,7 +14,7 @@ void handle_result(bool pass, const char* desc) {
      * to parse the output of this program to determine support,
      * it will be much easier. */
     if (pass) {
-        printf("\t" GREEN("PASS: %s") "\n", desc);
+        printf("\t" LGREEN("PASS: %s") "\n", desc);
         num_succeeded++;
     } else {
         fprintf(stderr, "\t" RED("FAIL: %s") "\n", desc);
@@ -22,8 +23,8 @@ void handle_result(bool pass, const char* desc) {
     num_attempted++;
 }
 
-#if !defined(_WIN32)
-bool check_sysconf(int val, const char* desc) {
+#if !defined(__WIN__)
+bool call_sysconf(int val, const char* desc) {
     printf("checking sysconf(%d) (\"%s\")...\n", val, desc);
 
     long ret = sysconf(val);
@@ -39,9 +40,12 @@ bool check_sysconf(int val, const char* desc) {
 }
 #endif
 
-bool check_popen() {
-#if !defined(_WIN32)
-    return check_sysconf(_SC_2_VERSION, "popen() and pclose()");
+bool check_sysconf(void) {
+#if !defined(__WIN__)
+    bool retval = true;
+    retval &= call_sysconf(_SC_2_VERSION, "popen() and pclose()");
+    retval &= call_sysconf(_SC_HOST_NAME_MAX, "_SC_HOST_NAME_MAX");
+    return retval;
 #else
     /* https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/popen-wpopen */
     printf("windows has _popen()/_pclose().\n");
@@ -49,7 +53,7 @@ bool check_popen() {
 #endif
 }
 
-bool check_system() {
+bool check_system(void) {
     printf("checking system(NULL)...\n");
 
     if (0 == system(NULL)) {
@@ -61,7 +65,7 @@ bool check_system() {
     }
 }
 
-bool check_z_printf() {
+bool check_z_printf(void) {
     char buf[256] = {0};
     size_t n = 10;
     snprintf(buf, 256, "printing a size_t with the value ten: '%zu'", n);
@@ -82,7 +86,7 @@ bool check_filesystem_api(void) {
     char* appfilename = systest_getappfilename();
     all_passed &= _validptr(appfilename);
     if (_validptr(appfilename)) {
-        printf(WHITE("systest_getappfilename() = '%s'") "\n", appfilename);
+        printf("systest_getappfilename() = '%s'\n", appfilename);
         /* ==== */
 
         /* ==== get base name (file name component of a path)  ==== */
@@ -94,7 +98,7 @@ bool check_filesystem_api(void) {
 
         char* basenameresult = systest_getbasename(basenametest);
         all_passed &= (strlen(basenameresult) > 0 && 0 != strcmp(basenameresult, "."));
-        printf(WHITE("systest_getbasename() = '%s'") "\n", basenameresult);
+        printf("systest_getbasename() = '%s'\n", basenameresult);
         systest_safefree(basenametest);
         /* ==== */
 
@@ -107,7 +111,7 @@ bool check_filesystem_api(void) {
 
         char* dirnameresult = systest_getdirname(dirnametest);
         all_passed &= (strlen(dirnameresult) > 0 && 0 != strcmp(dirnameresult, ".")); 
-        printf(WHITE("systest_getdirname() = '%s'") "\n", dirnameresult);
+        printf("systest_getdirname() = '%s'\n", dirnameresult);
         systest_safefree(dirnametest);
         /* ==== */
 
@@ -120,14 +124,21 @@ bool check_filesystem_api(void) {
     /* ==== get app dir path (absolute path of directory containing binary file) ==== */
     char* appdir = systest_getappdir();
     all_passed &= _validptr(appdir);
-    printf(WHITE("systest_getappdir() = '%s'") "\n", prn_str(appdir));
+    printf("systest_getappdir() = '%s'\n", prn_str(appdir));
     systest_safefree(appdir);
+    /* ==== */
+
+    /* ==== get binary file name with no path components ==== */
+    char* appbname = systest_getappbasename();
+    all_passed &= _validptr(appbname);
+    printf("systest_getappbasename() = '%s'\n", prn_str(appbname));
+    systest_safefree(appbname);
     /* ==== */
 
     /* ==== get current working directory (not necessarily the same ass app directory) ==== */
     char* cwd = systest_getcwd();
     all_passed &= _validptr(cwd);
-    printf(WHITE("systest_getcwd() = '%s'") "\n", prn_str(cwd));
+    printf("systest_getcwd() = '%s'\n", prn_str(cwd));
     systest_safefree(cwd);
     /* ==== */
 
@@ -149,10 +160,10 @@ bool check_filesystem_api(void) {
 
         if (exists != real_or_not[n].exists) {
             all_passed = false;
-            printf("\t" RED("systest_pathexists('%s') = %s") "\n",
+            printf(RED("systest_pathexists('%s') = %s") "\n",
                 real_or_not[n].path, exists ? "true" : "false");            
         } else {
-            printf("\t" GREEN("systest_pathexists('%s') = %s") "\n",
+            printf("systest_pathexists('%s') = %s\n",
                 real_or_not[n].path, exists ? "true" : "false");               
         }
     }
@@ -160,8 +171,38 @@ bool check_filesystem_api(void) {
     return all_passed;
 }
 
-void check_build_env() {
-#if !defined(_WIN32)
+bool check_get_hostname(void) {
+    char hname[SYSTEST_MAXHOST];
+    if (!systest_gethostname(hname))
+        return false;
+
+    if (!_validstr(hname)) {
+        printf(RED("gethostname returned an empty string!\n"));
+        return false;
+    }
+
+    printf("hostname = '%s'\n", hname);
+    return true;
+}
+
+bool check_get_uname(void) {
+#if !defined(__WIN__)
+    struct utsname name;
+    if (!systest_getuname(&name)) {
+        printf(RED("Couldn't get uname data!\n"));
+        return false;
+    }
+
+    printf("uname = '%s', '%s', '%s', '%s', '%s'\n", name.sysname, name.nodename,
+        name.release, name.version, name.machine);
+#else
+
+#endif
+    return true;
+}
+
+void check_build_env(void) {
+#if !defined(__WIN__)
 # if defined(__STDC_LIB_EXT1__)
    printf("__STDC_LIB_EXT1__ is defined\n");
 # else
@@ -172,7 +213,7 @@ void check_build_env() {
 # else
     printf("Not using GNU libc\n");
 # endif
-#else // _WIN32
+#else // __WIN__
 # if defined(__STDC_SECURE_LIB__)
    printf("__STDC_SECURE_LIB__ is defined\n");
 # else
@@ -180,23 +221,17 @@ void check_build_env() {
 # endif
 #endif
 #if defined(__clang__)
-    printf("Using clang\n");
+    printf("Using Clang %s\n", __clang_version__);
 #elif defined(__GNUC__)
-    printf("Using GCC\n");
+    printf("Using GCC %d.%d\n", __GNUC__, __GNUC_MINOR__);
+#elif defined(_MSC_VER)
+    printf("Using MSVC %lld\n", _MSC_FULL_VER);
 #else
     printf("Using unknown toolset\n");
 #endif
 }
 
-void check_platform()
-{
-#if !defined(_WIN32)
-#else
-
-#endif
-}
-
-void check_safefree() {
+void check_safefree(void) {
     int *ptr = malloc(sizeof(int));
     if (!ptr) {
         handle_error(errno, "malloc() failed!");
@@ -214,14 +249,13 @@ void check_safefree() {
 
 int main(void) {
 
-    printf("\t" BLUE("~~~~~~~~~~ <systest> ~~~~~~~~~~") "\n");
+    printf("\t" BLUEB("~~~~~~~~~~ <systest> ~~~~~~~~~~") "\n");
 
     //
     // begin environment tests
     //
 
     check_build_env();
-    check_platform();
 
     //
     // begin curiosity tests
@@ -233,9 +267,9 @@ int main(void) {
     // begin feature tests
     //
 
-    // popen() and pclose()
-    bool ret = check_popen();
-    handle_result(ret, "popen() and pclose()");
+    // sysconf checks
+    bool ret = check_sysconf();
+    handle_result(ret, "sysconf()");
 
     // system()
     ret = check_system();
@@ -246,20 +280,24 @@ int main(void) {
     handle_result(ret, "z prefix in *printf");
 
     //
-    // these are just for collection of data
-    // at the moment. just need to understand
-    // their behavior on different platforms.
+    // begin portability tests
     //
 
     ret = check_filesystem_api();
     handle_result(ret, "filesystem api");
 
-    if (num_succeeded != num_attempted)
-        printf("\t" WHITE("--- %d/%d tests passed ---\n"), num_succeeded, num_attempted);
-    else
-        printf("\t" GREEN("--- all %d tests passed! ---\n"), num_attempted);
+    ret = check_get_hostname();
+    handle_result(ret, "get hostname");
 
-    printf("\t" BLUE("~~~~~~~~~~ </systest> ~~~~~~~~~~") "\n");
+    ret = check_get_uname();
+    handle_result(ret, "get uname");
+
+    if (num_succeeded != num_attempted)
+        printf("\t" REDB("--- %d/%d tests passed ---\n"), num_succeeded, num_attempted);
+    else
+        printf("\t" LGREENB("--- all %d tests passed! ---\n"), num_attempted);
+
+    printf("\t" BLUEB("~~~~~~~~~~ </systest> ~~~~~~~~~~") "\n");
 
     return num_succeeded > 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -360,7 +398,7 @@ bool systest_pathexists(const char* restrict path, bool* restrict exists, systes
 }
 
 char* systest_getcwd(void) {
-#if !defined(_WIN32)
+#if !defined(__WIN__)
 # if defined(__linux__) && defined(_GNU_SOURCE)
     char* cur = get_current_dir_name();
     if (NULL == cur)
@@ -372,7 +410,7 @@ char* systest_getcwd(void) {
         handle_error(errno, "");
     return cur;
 # endif
-#else // _WIN32
+#else // __WIN__
     char* cur = _getcwd(NULL, 0);
     if (NULL == cur)
         handle_error(errno, "");
@@ -394,7 +432,6 @@ char* systest_getappfilename(void) {
 
     do {
         if (grow) {
-            self_log("reallocating %zu bytes for buffer and trying again...", size);
             systest_safefree(buffer);
 
             buffer = (char*)calloc(size, sizeof(char));
@@ -407,7 +444,7 @@ char* systest_getappfilename(void) {
             grow = false;
         }
 
-#if !defined(_WIN32)
+#if !defined(__WIN__)
 # if defined(__linux__)
 #  if defined(__HAVE_UNISTD_READLINK__)
         ssize_t read = readlink("/proc/self/exe", buffer, size);
@@ -461,9 +498,8 @@ char* systest_getappfilename(void) {
 # else
 #  error "no implementation for your platform; please contact the author."
 # endif
-#else // _WIN32
+#else // __WIN__
         DWORD ret = GetModuleFileNameA(NULL, buffer, (DWORD)size);
-        self_log("GetModuleFileNameA() returned: %lu (size = %zu)", ret, size);
         if (0 != ret && ret < (DWORD)size) {
             resolved = true;
             break;
@@ -488,8 +524,6 @@ char* systest_getappfilename(void) {
     if (!resolved) {
         systest_safefree(buffer);
         self_log("failed to resolve filename!");
-    } else {
-        self_log("successfully resolved: '%s'", buffer);
     }
 
     return buffer;
@@ -523,7 +557,7 @@ char* systest_getbasename(char* restrict path) {
     if (!_validstr(path))
         return ".";
 
-#if !defined(_WIN32)
+#if !defined(__WIN__)
     return basename(path);
 #else
     return PathFindFileNameA(path);
@@ -534,7 +568,7 @@ char* systest_getdirname(char* restrict path) {
     if (!_validstr(path))
         return ".";
 
-#if !defined(_WIN32)
+#if !defined(__WIN__)
     return dirname(path);
 #else
     if (!PathRemoveFileSpecA((LPSTR)path))
@@ -547,7 +581,7 @@ bool systest_ispathrelative(const char* restrict path, bool* restrict relative) 
     if (!_validstr(path) || !_validptr(relative))
         return false;
 
-#if !defined(_WIN32)
+#if !defined(__WIN__)
     if (path[0] == '/' || (path[0] == '~' && path[1] == '/'))
         *relative = false;
     else
@@ -556,7 +590,7 @@ bool systest_ispathrelative(const char* restrict path, bool* restrict relative) 
 #else
     *relative = (TRUE == PathIsRelativeA(path));
     return true;
-#endif    
+#endif
 }
 
 char* systest_stattostring(struct stat* restrict st) {
@@ -633,6 +667,44 @@ bool systest_add_slash(char* restrict path) {
 
     return true;
 }
+
+bool systest_gethostname(char hname[SYSTEST_MAXHOST]) {
+    hname[0] = '\0';
+#if !defined(__WIN__)
+    if (-1 == gethostname(hname, SYSTEST_MAXHOST - 1)) {
+        handle_error(errno, "gethostname() failed!");
+        return false;
+    }
+#else
+    if (SOCKET_ERROR == gethostname(hname, SYSTEST_MAXHOST)) {
+        handle_error(WSAGetLastError(), "gethostname() failed!");
+        return false;
+    }
+#endif // !__WIN__
+    return true;
+}
+
+bool systest_getuname(struct utsname* name) {
+    if (!_validptr(name))
+        return false;
+
+#if !defined(__WIN__)
+    name->sysname[0] = '\0';
+    name->nodename[0] = '\0';
+    name->release[0] = '\0';
+    name->version[0] = '\0';
+    name->machine[0] = '\0';
+
+    if (-1 == uname(name)) {
+        handle_error(errno, "uname() failed!");
+        return false;
+    }
+#else
+
+#endif // !__WIN__
+    return true;
+}
+
 
 //
 // utility functions
