@@ -17,6 +17,7 @@
 #include <libgen.h>
 #include <limits.h>
 #include <fcntl.h>
+#include <sys/utsname.h>
 
 # if defined(__GLIBC__)
 # if (__GLIBC__ >= 2 && __GLIBC_MINOR__ > 19)  || \
@@ -65,7 +66,6 @@
 #if defined(__APPLE__)
 # define __MACOS__
 # include <mach-o/dyld.h>
-# include <sys/utsname.h>
 #elif defined(__FreeBSD__)
 # include <sys/sysctl.h>
 #endif
