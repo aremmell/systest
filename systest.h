@@ -1,7 +1,7 @@
 #ifndef _SYSTEST_H_INCLUDED
 #define _SYSTEST_H_INCLUDED
 
-#if !defined(__WIN__)
+#if !defined(_WIN32)
 # if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 #  define __BSD__
 #  define _BSD_SOURCE
@@ -17,6 +17,7 @@
 #include <libgen.h>
 #include <limits.h>
 #include <fcntl.h>
+#include <sys/utsname.h>
 
 # if defined(__GLIBC__)
 # if (__GLIBC__ >= 2 && __GLIBC_MINOR__ > 19)  || \
@@ -30,7 +31,7 @@
 # else
 #  define SYSTEST_MAXPATH 1024
 # endif
-# define SYSTEST_MAXHOST 64
+# define SYSTEST_MAXHOST 256
 # define SYSTEST_PATH_SEP '/'
 #else // __WIN__
 # define __WIN__
@@ -40,14 +41,23 @@
 # define __WIN___WINNT 0x0A00
 # include <windows.h>
 # include <shlwapi.h>
-# include <pathcch.h>
 # include <direct.h>
 # include <winsock2.h>
+# include <wow64apiset.h>
 # include <io.h>
 
 # define SYSTEST_MAXPATH MAX_PATH
 # define SYSTEST_MAXHOST 256
+# define _SYS_NAMELEN 256
 # define SYSTEST_PATH_SEP '\\'
+
+struct utsname {
+    char sysname[_SYS_NAMELEN];
+    char nodename[_SYS_NAMELEN];
+    char release[_SYS_NAMELEN];
+    char version[_SYS_NAMELEN];
+    char machine[_SYS_NAMELEN];
+};
 #endif
 
 #include <sys/types.h>
@@ -65,7 +75,6 @@
 #if defined(__APPLE__)
 # define __MACOS__
 # include <mach-o/dyld.h>
-# include <sys/utsname.h>
 #elif defined(__FreeBSD__)
 # include <sys/sysctl.h>
 #endif

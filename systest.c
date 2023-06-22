@@ -2,8 +2,9 @@
 #include "macros.h"
 
 #if defined(__WIN__)
-# pragma comment(lib, "Shlwapi.lib")
-# pragma comment(lib, "Ws2_32.lib")
+# pragma comment(lib, "shlwapi.lib")
+# pragma comment(lib, "ws2_32.lib")
+# pragma comment(lib, "version.lib")
 #endif
 
 int num_attempted = 0;
@@ -186,7 +187,6 @@ bool check_get_hostname(void) {
 }
 
 bool check_get_uname(void) {
-#if !defined(__WIN__)
     struct utsname name;
     if (!systest_getuname(&name)) {
         printf(RED("Couldn't get uname data!\n"));
@@ -195,9 +195,6 @@ bool check_get_uname(void) {
 
     printf("uname = '%s', '%s', '%s', '%s', '%s'\n", name.sysname, name.nodename,
         name.release, name.version, name.machine);
-#else
-
-#endif
     return true;
 }
 
@@ -225,7 +222,7 @@ void check_build_env(void) {
 #elif defined(__GNUC__)
     printf("Using GCC %d.%d\n", __GNUC__, __GNUC_MINOR__);
 #elif defined(_MSC_VER)
-    printf("Using MSVC %lld\n", _MSC_FULL_VER);
+    printf("Using MSVC %lld\n", (long long)_MSC_FULL_VER);
 #else
     printf("Using unknown toolset\n");
 #endif
@@ -604,6 +601,9 @@ char* systest_stattostring(struct stat* restrict st) {
     }
 
 #if defined(__WIN__)
+# define S_IFBLK 0x0001
+# define S_IFLNK 0x0002
+# define S_IFSOCK 0x0003
 # define S_IFIFO _S_IFIFO
 # define S_IRUSR 0x0100
 # define S_IWUSR 0x0080
@@ -676,10 +676,20 @@ bool systest_gethostname(char hname[SYSTEST_MAXHOST]) {
         return false;
     }
 #else
-    if (SOCKET_ERROR == gethostname(hname, SYSTEST_MAXHOST)) {
-        handle_error(WSAGetLastError(), "gethostname() failed!");
+    WSADATA wsad = {0};
+    int ret = WSAStartup(MAKEWORD(2, 2), &wsad);
+    if (0 != ret) {
+        handle_error(ret, "WSAStartup() failed!");
         return false;
     }
+
+    if (SOCKET_ERROR == gethostname(hname, SYSTEST_MAXHOST)) {
+        handle_error(WSAGetLastError(), "gethostname() failed!");
+        WSACleanup();
+        return false;
+    }
+
+    WSACleanup();
 #endif // !__WIN__
     return true;
 }
@@ -688,18 +698,95 @@ bool systest_getuname(struct utsname* name) {
     if (!_validptr(name))
         return false;
 
-#if !defined(__WIN__)
-    name->sysname[0] = '\0';
-    name->nodename[0] = '\0';
-    name->release[0] = '\0';
-    name->version[0] = '\0';
-    name->machine[0] = '\0';
+    memset(name, 0, sizeof(struct utsname));
 
+#if !defined(__WIN__)
     if (-1 == uname(name)) {
         handle_error(errno, "uname() failed!");
         return false;
     }
 #else
+    static const char* sys_name = "Windows";
+    static const char* kernel_dll = "kernel32.dll";
+
+    strncpy(name->sysname, sys_name, strnlen(sys_name, _SYS_NAMELEN));
+
+    char tmp[SYSTEST_MAXHOST];
+    if (!systest_gethostname(tmp))
+        return false;
+
+    strncpy(name->nodename, tmp, strnlen(tmp, _SYS_NAMELEN));
+
+    char path[SYSTEST_MAXPATH];
+    if (0 == GetSystemDirectoryA(path, SYSTEST_MAXPATH)) {
+        handle_error(GetLastError(), "GetSystemDirectoryA failed!");
+        return false;
+    }
+
+    if (!PathAppendA(path, kernel_dll)) {
+        handle_error(GetLastError(), "PathAppendA failed!");
+        return false;
+    }
+
+    self_log("kernel dll is at: %s; extracting version...", path);
+
+    DWORD vsize = GetFileVersionInfoSizeA(path, NULL);
+    if (0 == vsize) {
+        handle_error(GetLastError(), "GetFileVersionInfoSizeA failed!");
+        return false;
+    }
+
+
+    VS_FIXEDFILEINFO* fvi = calloc(1, vsize);
+    if (!fvi) {
+        handle_error(errno, "calloc failed!");
+        return false;
+    }
+
+    if (!GetFileVersionInfoA(path, 0, vsize, fvi)) {
+        handle_error(GetLastError(), "GetFileVersionInfoA failed!");
+        systest_safefree(fvi);
+        return false;
+    }
+
+    UINT blk_size = 0;
+    VS_FIXEDFILEINFO* blk = NULL;
+    if (!VerQueryValueA(fvi, "\\", &blk, &blk_size) || blk_size < sizeof(VS_FIXEDFILEINFO)) {
+        handle_error(GetLastError(), "VerQueryValueA failed!");
+        systest_safefree(fvi);
+        return false;
+    }
+
+    const WORD verMajor = HIWORD(blk->dwProductVersionMS);
+    const WORD verMinor = LOWORD(blk->dwProductVersionMS);
+    const WORD verBuild = HIWORD(blk->dwProductVersionLS);
+
+    systest_safefree(fvi);
+
+    int prn = sprintf(name->release, "%hu.%hu.%hu", verMajor, verMinor, verBuild);
+    assert(prn > 0);
+
+    SYSTEM_INFO si = {0};
+    GetNativeSystemInfo(&si);
+    
+    const char* mach_hw_str = "";
+    switch (si.wProcessorArchitecture) {
+        case PROCESSOR_ARCHITECTURE_INTEL: mach_hw_str = "x86"; break;
+        case PROCESSOR_ARCHITECTURE_IA64: mach_hw_str = "IA64"; break;
+        case PROCESSOR_ARCHITECTURE_ARM64: mach_hw_str = "aarch64"; break;
+        case PROCESSOR_ARCHITECTURE_ARM: mach_hw_str = "armhf"; break;
+        case PROCESSOR_ARCHITECTURE_AMD64: mach_hw_str = "x86_64"; break;
+        case PROCESSOR_ARCHITECTURE_UNKNOWN:
+        default:
+            mach_hw_str = "<unknown>";
+            break;
+    }
+
+    prn = snprintf(name->version, _SYS_NAMELEN, "%s %hu.%hu.%hu-%s", sys_name, verMajor,
+        verMinor, verBuild, mach_hw_str);
+    assert(prn > 0);
+
+    strncpy(name->machine, mach_hw_str, strnlen(mach_hw_str, _SYS_NAMELEN));
 
 #endif // !__WIN__
     return true;
@@ -712,8 +799,8 @@ bool systest_getuname(struct utsname* name) {
 
 
 void _handle_error(int err, const char* msg, char* file, int line, const char* func) {
-    fprintf(stderr, RED("ERROR: %s (%s:%d): %s (%s)") "\n",
-        func, file, line, msg, strerror(err));
+    fprintf(stderr, RED("ERROR: %s (%s:%d): %s (%d, %s)") "\n",
+        func, file, line, msg, err, strerror(err));
 }
 
 void _self_log(const char* msg, char* file, int line, const char* func) {
