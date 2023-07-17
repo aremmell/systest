@@ -111,7 +111,7 @@ bool check_filesystem_api(void) {
         }
 
         char* dirnameresult = systest_getdirname(dirnametest);
-        all_passed &= (strlen(dirnameresult) > 0 && 0 != strcmp(dirnameresult, ".")); 
+        all_passed &= (strlen(dirnameresult) > 0 && 0 != strcmp(dirnameresult, "."));
         printf("systest_getdirname() = '%s'\n", dirnameresult);
         systest_safefree(dirnametest);
         /* ==== */
@@ -157,18 +157,18 @@ bool check_filesystem_api(void) {
             SYSTEST_PATH_REL_TO_APP);
         all_passed &= ret;
         if (!ret)
-            continue;            
+            continue;
 
         if (exists != real_or_not[n].exists) {
             all_passed = false;
             printf(RED("systest_pathexists('%s') = %s") "\n",
-                real_or_not[n].path, exists ? "true" : "false");            
+                real_or_not[n].path, exists ? "true" : "false");
         } else {
             printf("systest_pathexists('%s') = %s\n",
-                real_or_not[n].path, exists ? "true" : "false");               
+                real_or_not[n].path, exists ? "true" : "false");
         }
     }
-    
+
     return all_passed;
 }
 
@@ -238,7 +238,7 @@ void check_safefree(void) {
     *ptr = 1234;
     systest_safefree(ptr);
 
-    if (ptr)
+    if (!ptr)
         printf("safe_free() does reset the pointer\n");
     else
         printf(RED("safe_free() does NOT reset the pointer!\n"));
@@ -314,7 +314,7 @@ bool systest_pathgetstat(const char* restrict path, struct stat* restrict st, sy
     bool relative = false;
     if (!systest_ispathrelative(path, &relative))
         return false;
-    
+
     if (relative) {
         char* base_path = NULL;
         switch(rel_to) {
@@ -373,7 +373,7 @@ bool systest_pathgetstat(const char* restrict path, struct stat* restrict st, sy
     char* as_str = systest_stattostring(st);
     if (as_str) {
         printf("%s = %s\n", path, as_str);
-        systest_safefree(as_str);    
+        systest_safefree(as_str);
     }
 
     return true;
@@ -535,7 +535,7 @@ char* systest_getappbasename(void) {
     char* bname  = strdup(retval);
 
     systest_safefree(filename);
-    return bname;    
+    return bname;
 }
 
 char* systest_getappdir(void) {
@@ -619,8 +619,8 @@ char* systest_stattostring(struct stat* restrict st) {
     char* type = "";
     switch (st->st_mode & S_IFMT) {
         case S_IFBLK:  type = "block device"; break;
-        case S_IFCHR:  type = "character special"; break;        
-        case S_IFDIR:  type = "directory"; break;        
+        case S_IFCHR:  type = "character special"; break;
+        case S_IFDIR:  type = "directory"; break;
         case S_IFIFO:  type = "pipe (fifo)"; break;
         case S_IFLNK:  type = "symlink"; break;
         case S_IFREG:  type = "regular"; break;
@@ -630,7 +630,7 @@ char* systest_stattostring(struct stat* restrict st) {
 
     char mode[32] = {0};
     snprintf(mode, sizeof(mode), "%c%c%c%c%c%c%c%c%c%c (%03o)",
-        (systest_bittest(st->st_mode & S_IFMT, S_IFDIR) ? 'd' : 
+        (systest_bittest(st->st_mode & S_IFMT, S_IFDIR) ? 'd' :
         (systest_bittest(st->st_mode & S_IFMT, S_IFSOCK) ? 's' : '-')),
         (systest_bittest(st->st_mode & 0x0FFF, S_IRUSR) ? 'r' : '-'),
         (systest_bittest(st->st_mode & 0x0FFF, S_IWUSR) ? 'w' : '-'),
@@ -768,7 +768,7 @@ bool systest_getuname(struct utsname* name) {
 
     SYSTEM_INFO si = {0};
     GetNativeSystemInfo(&si);
-    
+
     const char* mach_hw_str = "";
     switch (si.wProcessorArchitecture) {
         case PROCESSOR_ARCHITECTURE_INTEL: mach_hw_str = "x86"; break;

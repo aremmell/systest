@@ -149,7 +149,7 @@ bool systest_getuname(struct utsname* name);
 //
 
 
-/* this is strictly for use when encountering an actual failure of a system call. 
+/* this is strictly for use when encountering an actual failure of a system call.
  * use self_log to report things other than error numbers. */
 void _handle_error(int err, const char* msg, char* file, int line, const char* func);
 #define handle_error(err, msg) _handle_error(err, msg, __file__, __LINE__, __func__);
@@ -186,7 +186,7 @@ void systest_safeclose(int* restrict fd) {
 #endif
         handle_error(errno, "close() failed!");
 
-    *fd = -1;    
+    *fd = -1;
 }
 
 /** Checks a bitmask for a specific set of bits. */
