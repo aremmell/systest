@@ -169,6 +169,12 @@ bool check_filesystem_api(void) {
         }
     }
 
+    /* ==== free disk space ==== */
+    uint64_t free_bytes = 0;
+    all_passed &= systest_getfreediskspace(&free_bytes);
+    printf("systest_getfreediskspace() = %"PRIu64"\n", free_bytes);
+    /* ==== */
+
     return all_passed;
 }
 
@@ -744,15 +750,25 @@ bool systest_add_slash(char* restrict path) {
     return true;
 }
 
-https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getdiskfreespaceexa
+#define GIB_FROM_BYTES(bytes) ((bytes) / 1024 / 1024 / 1024)
+
 bool systest_getfreediskspace(uint64_t* bytes) {
     if (bytes == NULL) {
         return false;
     }
 #if !defined(__WIN__)
+    return false;
 #else
-    ULARGE_INTEGER free_bytes_avail_to_user = {0};
     ULARGE_INTEGER free_bytes = {0};
+    int get = GetDiskFreeSpaceExA(NULL, &free_bytes, NULL, NULL);
+    if (get == 0) {
+        handle_error(GetLastError(), "GetDiskFreeSpaceEx");
+        return false;
+    } else {
+        printf("free disk space: %"PRIu64" GiB\n", GIB_FROM_BYTES(free_bytes.QuadPart));
+        *bytes = free_bytes.QuadPart;
+        return true;
+    }
 #endif
 }
 
