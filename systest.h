@@ -19,12 +19,20 @@
 #include <fcntl.h>
 #include <sys/utsname.h>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <poll.h>
+
 # if defined(__GLIBC__)
 # if (__GLIBC__ >= 2 && __GLIBC_MINOR__ > 19)  || \
      (__GLIBC__ == 2 && __GLIBC_MINOR__ <= 19) && defined(_BSD_SOURCE)
 #  define __HAVE_UNISTD_READLINK__
 # endif
 # endif
+
+# define BAD_SOCKET -1
 
 # if defined(PATH_MAX)
 #  define SYSTEST_MAXPATH PATH_MAX
@@ -33,7 +41,12 @@
 # endif
 # define SYSTEST_MAXHOST 256
 # define SYSTEST_PATH_SEP '/'
-#else // __WIN__
+
+typedef int descriptor;
+typedef size_t iolen;
+
+#else /* __WIN__ */
+
 # define __WIN__
 # define __WANT_STDC_SECURE_LIB__ 1
 # define WIN32_LEAN_AND_MEAN
@@ -43,9 +56,11 @@
 # include <shlwapi.h>
 # include <direct.h>
 # include <winsock2.h>
+# include <ws2tcpip.h>
 # include <wow64apiset.h>
 # include <io.h>
 
+# define BAD_SOCKET INVALID_SOCKET
 # define SYSTEST_MAXPATH MAX_PATH
 # define SYSTEST_MAXHOST 256
 # define _SYS_NAMELEN 256
@@ -58,7 +73,10 @@ struct utsname {
     char version[_SYS_NAMELEN];
     char machine[_SYS_NAMELEN];
 };
-#endif
+
+typedef SOCKET descriptor;
+typedef int iolen;
+#endif /* !__WIN__ */
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -137,6 +155,7 @@ bool systest_add_slash(char* restrict path);
 
 /////////////////////////////// network ////////////////////////////////////////
 
+bool systest_haveinetconn(void);
 bool systest_gethostname(char hname[SYSTEST_MAXHOST]);
 
 /////////////////////////////// platform ///////////////////////////////////////

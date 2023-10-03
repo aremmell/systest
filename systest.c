@@ -172,6 +172,66 @@ bool check_filesystem_api(void) {
     return all_passed;
 }
 
+#define INET_TEST_HOST "example.com"
+#define INET_TEST_PORT "http"
+
+bool systest_haveinetconn(void) {
+    struct addrinfo hints = {
+        .ai_flags = 0,
+        .ai_family = AF_INET,
+        .ai_socktype = SOCK_STREAM
+    };
+
+    struct addrinfo* result = NULL;
+    int get = getaddrinfo(INET_TEST_HOST, INET_TEST_PORT, (const struct addrinfo*)&hints, &result);
+    if (0 != get) {
+        printf("getaddrinfo failed: %d (%s)!\n", get, gai_strerror(get));
+        return false;
+    }
+
+    printf("getaddrinfo succeeded; creating a compatible socket...\n");
+
+    bool conn_result = false;
+    struct addrinfo* cur = result;
+    do {
+        printf("trying socket(%d, %d, %d)...\n", AF_INET, cur->ai_socktype, cur->ai_protocol);
+        descriptor sock = socket(AF_INET, cur->ai_socktype, cur->ai_protocol);
+        if (sock == BAD_SOCKET) {
+            printf("socket failed: %d (%s)", errno, strerror(errno));
+        } else {
+            printf("got socket %d; trying connect...\n", (int)sock);
+            const struct timeval timeout = {5, 0};
+            int set = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(struct timeval));
+            if (set == -1) {
+                printf("setsockopt(SO_SNDTIMEO) failed: %d (%s)\n", errno, strerror(errno));
+            }
+            set = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(struct timeval));
+            if (set == -1) {
+                printf("setsockopt(SO_RCVTIMEO) failed: %d (%s)\n", errno, strerror(errno));
+            }
+            int conn = connect(sock, (const struct sockaddr*)cur->ai_addr, cur->ai_addrlen);
+            if (conn == 0) {
+                printf("connected successfully!\n");
+                conn_result = true;
+                break;
+            } else {
+                printf("connect failed: %d (%s); trying next address...\n", errno, strerror(errno));
+            }
+#if !defined(__WIN__)
+            close(sock);
+#else
+            closesocket(sock);
+#endif
+        }
+        cur = cur->ai_next;
+    } while (cur != NULL);
+
+    freeaddrinfo(result);
+    result = NULL;
+
+    return conn_result;
+}
+
 bool check_get_hostname(void) {
     char hname[SYSTEST_MAXHOST];
     if (!systest_gethostname(hname))
@@ -288,6 +348,9 @@ int main(void) {
 
     ret = check_get_uname();
     handle_result(ret, "get uname");
+
+    ret = systest_haveinetconn();
+    handle_result(ret, "test internet connection");
 
     if (num_succeeded != num_attempted)
         printf("\t" REDB("--- %d/%d tests passed ---\n"), num_succeeded, num_attempted);
@@ -735,7 +798,6 @@ bool systest_getuname(struct utsname* name) {
         handle_error(GetLastError(), "GetFileVersionInfoSizeA failed!");
         return false;
     }
-
 
     VS_FIXEDFILEINFO* fvi = calloc(1, vsize);
     if (!fvi) {
