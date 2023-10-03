@@ -153,6 +153,8 @@ char* systest_stattostring(struct stat* restrict st);
 
 bool systest_add_slash(char* restrict path);
 
+bool systest_getfreediskspace(uint64_t* bytes);
+
 /////////////////////////////// network ////////////////////////////////////////
 
 bool systest_haveinetconn(void);

@@ -731,6 +731,18 @@ bool systest_add_slash(char* restrict path) {
     return true;
 }
 
+https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getdiskfreespaceexa
+bool systest_getfreediskspace(uint64_t* bytes) {
+    if (bytes == NULL) {
+        return false;
+    }
+#if !defined(__WIN__)
+#else
+    ULARGE_INTEGER free_bytes_avail_to_user = {0};
+    ULARGE_INTEGER free_bytes = {0};
+#endif
+}
+
 bool systest_gethostname(char hname[SYSTEST_MAXHOST]) {
     hname[0] = '\0';
 #if !defined(__WIN__)
