@@ -860,9 +860,14 @@ bool systest_getuname(struct utsname* name) {
         return false;
     }
 
-    const WORD verMajor = HIWORD(blk->dwProductVersionMS);
+    WORD verMajor = HIWORD(blk->dwProductVersionMS);
     const WORD verMinor = LOWORD(blk->dwProductVersionMS);
     const WORD verBuild = HIWORD(blk->dwProductVersionLS);
+
+    static const WORD build_win11_threshold = 22000;
+    if (verBuild >= build_win11_threshold) {
+        verMajor = 11;
+    }
 
     systest_safefree(fvi);
 
