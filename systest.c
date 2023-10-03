@@ -176,6 +176,15 @@ bool check_filesystem_api(void) {
 #define INET_TEST_PORT "http"
 
 bool systest_haveinetconn(void) {
+#if defined(__WIN__)
+    WSADATA wsad = { 0 };
+    int ret = WSAStartup(MAKEWORD(2, 2), &wsad);
+    if (0 != ret) {
+        handle_error(ret, "WSAStartup() failed!");
+        return false;
+    }
+#endif
+
     struct addrinfo hints = {
         .ai_flags = 0,
         .ai_family = AF_INET,
@@ -201,11 +210,11 @@ bool systest_haveinetconn(void) {
         } else {
             printf("got socket %d; trying connect...\n", (int)sock);
             const struct timeval timeout = {5, 0};
-            int set = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(struct timeval));
+            int set = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const void*)&timeout, sizeof(struct timeval));
             if (set == -1) {
                 printf("setsockopt(SO_SNDTIMEO) failed: %d (%s)\n", errno, strerror(errno));
             }
-            set = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(struct timeval));
+            set = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const void*)&timeout, sizeof(struct timeval));
             if (set == -1) {
                 printf("setsockopt(SO_RCVTIMEO) failed: %d (%s)\n", errno, strerror(errno));
             }
@@ -228,6 +237,10 @@ bool systest_haveinetconn(void) {
 
     freeaddrinfo(result);
     result = NULL;
+
+#if defined(__WIN__)
+    (void)WSACleanup();
+#endif
 
     return conn_result;
 }
