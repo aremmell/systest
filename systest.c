@@ -768,7 +768,7 @@ bool systest_getfreediskspace(uint64_t* bytes) {
     }
     free(cwd);
 
-    *bytes = (uint64_t)(stvfs.f_bavail * stvfs.f_frsize ? stvfs.f_frsize : stvfs.f_bsize);
+    *bytes = (uint64_t)(stvfs.f_bavail * (stvfs.f_frsize ? stvfs.f_frsize : stvfs.f_bsize));
     printf("free disk space: %"PRIu64" GiB\n", GIB_FROM_BYTES(*bytes));
     return true;
 #else
