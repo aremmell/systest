@@ -224,7 +224,7 @@ bool systest_haveinetconn(void) {
             if (set == -1) {
                 printf("setsockopt(SO_RCVTIMEO) failed: %d (%s)\n", errno, strerror(errno));
             }
-            int conn = connect(sock, (const struct sockaddr*)cur->ai_addr, cur->ai_addrlen);
+            int conn = connect(sock, (const struct sockaddr*)cur->ai_addr, (iolen)cur->ai_addrlen);
             if (conn == 0) {
                 printf("connected successfully!\n");
                 conn_result = true;
