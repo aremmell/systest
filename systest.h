@@ -20,6 +20,7 @@
 #include <sys/utsname.h>
 
 #include <sys/statvfs.h>
+#include <sys/time.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
