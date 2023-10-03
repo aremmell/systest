@@ -224,7 +224,7 @@ bool systest_haveinetconn(void) {
             if (set == -1) {
                 printf("setsockopt(SO_RCVTIMEO) failed: %d (%s)\n", errno, strerror(errno));
             }
-            int conn = connect(sock, (const struct sockaddr*)cur->ai_addr, (iolen)cur->ai_addrlen);
+            int conn = connect(sock, (const struct sockaddr*)cur->ai_addr, (optlen)cur->ai_addrlen);
             if (conn == 0) {
                 printf("connected successfully!\n");
                 conn_result = true;
@@ -757,18 +757,29 @@ bool systest_getfreediskspace(uint64_t* bytes) {
         return false;
     }
 #if !defined(__WIN__)
-    return false;
+    char *cwd = systest_getcwd();
+    self_log("using path '%s' for statvfs", cwd);
+
+    struct statvfs stvfs = {0};
+    if (-1 == statvfs(cwd, &stvfs)) {
+        handle_error(errno, "statvfs");
+        free(cwd);
+        return false;
+    }
+    free(cwd);
+
+    *bytes = (uint64_t)(stvfs.f_bavail * stvfs.f_frsize ? stvfs.f_frsize : stvfs.f_bsize);
+    printf("free disk space: %"PRIu64" GiB\n", GIB_FROM_BYTES(*bytes));
+    return true;
 #else
     ULARGE_INTEGER free_bytes = {0};
-    int get = GetDiskFreeSpaceExA(NULL, &free_bytes, NULL, NULL);
-    if (get == 0) {
+    if (!GetDiskFreeSpaceExA(NULL, &free_bytes, NULL, NULL)) {
         handle_error(GetLastError(), "GetDiskFreeSpaceEx");
         return false;
-    } else {
-        printf("free disk space: %"PRIu64" GiB\n", GIB_FROM_BYTES(free_bytes.QuadPart));
-        *bytes = free_bytes.QuadPart;
-        return true;
     }
+    printf("free disk space: %"PRIu64" GiB\n", GIB_FROM_BYTES(free_bytes.QuadPart));
+    *bytes = free_bytes.QuadPart;
+    return true;
 #endif
 }
 

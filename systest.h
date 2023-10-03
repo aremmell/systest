@@ -19,6 +19,8 @@
 #include <fcntl.h>
 #include <sys/utsname.h>
 
+#include <sys/statvfs.h>
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -43,7 +45,7 @@
 # define SYSTEST_PATH_SEP '/'
 
 typedef int descriptor;
-typedef size_t iolen;
+typedef socklen_t optlen;
 
 #else /* __WIN__ */
 
@@ -75,7 +77,7 @@ struct utsname {
 };
 
 typedef SOCKET descriptor;
-typedef int iolen;
+typedef int optlen;
 #endif /* !__WIN__ */
 
 #include <sys/types.h>
