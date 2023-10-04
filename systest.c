@@ -151,8 +151,8 @@ bool check_filesystem_api(void) {
 
     /* file existence: some we know exist, and some we know don't. */
     static const struct { const char* const path; bool exists; } real_or_not[] = {
-        {"../../LICENSE", true},
-        {"./i_exist", true},
+        {"../LICENSE", true},
+        {"./CMakeCache.txt", true},
         {"a_s_d_f_foobar.baz", false},
         {"idontexist", false},
     };
