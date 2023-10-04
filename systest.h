@@ -219,6 +219,11 @@ bool systest_bittest(uint32_t flags, uint32_t test) {
     return (flags & test) == test;
 }
 
+#if defined __countof
+# undef __countof
+#endif
+#define __countof(arr) (sizeof((arr)) / sizeof((arr)[0]))
+
 #ifdef __cplusplus
 }
 #endif
