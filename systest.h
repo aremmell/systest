@@ -212,10 +212,9 @@ void _systest_safefree(void** p) {
     *p = NULL;
 }
 
-static inline
-void systest_safefree(void* p) {
-    _systest_safefree(&p);
-}
+
+# define systest_safefree(pp) _systest_safefree((void**)pp)
+
 
 static inline
 void systest_safeclose(int* restrict fd) {

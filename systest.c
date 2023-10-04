@@ -106,7 +106,7 @@ bool check_filesystem_api(void) {
         char* basenameresult = systest_getbasename(basenametest);
         all_passed &= (strlen(basenameresult) > 0 && 0 != strcmp(basenameresult, "."));
         printf("systest_getbasename() = '%s'\n", basenameresult);
-        systest_safefree(basenametest);
+        systest_safefree(&basenametest);
         /* ==== */
 
         /* ==== get dir name (directory structure component of a path)  ==== */
@@ -119,10 +119,10 @@ bool check_filesystem_api(void) {
         char* dirnameresult = systest_getdirname(dirnametest);
         all_passed &= (strlen(dirnameresult) > 0 && 0 != strcmp(dirnameresult, "."));
         printf("systest_getdirname() = '%s'\n", dirnameresult);
-        systest_safefree(dirnametest);
+        systest_safefree(&dirnametest);
         /* ==== */
 
-        systest_safefree(appfilename);
+        systest_safefree(&appfilename);
     } else {
         printf(RED("systest_getbasename() = skipped") "\n");
         printf(RED("systest_getdirname() = skipped") "\n");
@@ -132,21 +132,21 @@ bool check_filesystem_api(void) {
     char* appdir = systest_getappdir();
     all_passed &= _validptr(appdir);
     printf("systest_getappdir() = '%s'\n", prn_str(appdir));
-    systest_safefree(appdir);
+    systest_safefree(&appdir);
     /* ==== */
 
     /* ==== get binary file name with no path components ==== */
     char* appbname = systest_getappbasename();
     all_passed &= _validptr(appbname);
     printf("systest_getappbasename() = '%s'\n", prn_str(appbname));
-    systest_safefree(appbname);
+    systest_safefree(&appbname);
     /* ==== */
 
     /* ==== get current working directory (not necessarily the same ass app directory) ==== */
     char* cwd = systest_getcwd();
     all_passed &= _validptr(cwd);
     printf("systest_getcwd() = '%s'\n", prn_str(cwd));
-    systest_safefree(cwd);
+    systest_safefree(&cwd);
     /* ==== */
 
     /* file existence: some we know exist, and some we know don't. */
@@ -321,7 +321,7 @@ void check_safefree(void) {
     }
 
     *ptr = 1234;
-    systest_safefree(ptr);
+    systest_safefree(&ptr);
 
     if (!ptr)
         printf("safe_free() does reset the pointer\n");
@@ -432,13 +432,13 @@ bool systest_pathgetstat(const char* restrict path, struct stat* restrict st, sy
         int fd = open(base_path, open_flags);
         if (-1 == fd) {
             handle_error(errno, "open() failed!");
-            systest_safefree(base_path);
+            systest_safefree(&base_path);
             return false;
         }
 
         stat_ret = fstatat(fd, path, st, AT_SYMLINK_NOFOLLOW);
         systest_safeclose(&fd);
-        systest_safefree(base_path);
+        systest_safefree(&base_path);
     } else {
         stat_ret = stat(path, st);
     }
@@ -465,7 +465,7 @@ bool systest_pathgetstat(const char* restrict path, struct stat* restrict st, sy
     char* as_str = systest_stattostring(st);
     if (as_str) {
         printf("%s = %s\n", path, as_str);
-        systest_safefree(as_str);
+        systest_safefree(&as_str);
     }
 
     return true;
@@ -521,7 +521,7 @@ char* systest_getappfilename(void) {
 
     do {
         if (grow) {
-            systest_safefree(buffer);
+            systest_safefree(&buffer);
 
             buffer = (char*)calloc(size, sizeof(char));
             if (NULL == buffer) {
@@ -611,7 +611,7 @@ char* systest_getappfilename(void) {
     } while (true);
 
     if (!resolved) {
-        systest_safefree(buffer);
+        systest_safefree(&buffer);
         self_log("failed to resolve filename!");
     }
 
@@ -626,7 +626,7 @@ char* systest_getappbasename(void) {
     char* retval = systest_getbasename(filename);
     char* bname  = strdup(retval);
 
-    systest_safefree(filename);
+    systest_safefree(&filename);
     return bname;
 }
 
@@ -638,7 +638,7 @@ char* systest_getappdir(void) {
     char* retval = systest_getdirname(filename);
     char* dname = strdup(retval);
 
-    systest_safefree(filename);
+    systest_safefree(&filename);
     return dname;
 }
 
