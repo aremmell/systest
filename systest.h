@@ -114,7 +114,7 @@ extern "C" {
 
 
 //
-// portability test implementations
+// portability test definitions
 //
 
 
