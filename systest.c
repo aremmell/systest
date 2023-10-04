@@ -918,6 +918,7 @@ bool systest_getuname(struct utsname* name) {
 bool systest_getcpucount(int* ncpus) {
     if (!ncpus)
         return false;
+    *ncpus = 0;
 #if defined(__MACOS__)
     static struct {
         const char* const name;
@@ -945,6 +946,46 @@ bool systest_getcpucount(int* ncpus) {
             *ncpus = ret_value;
         }
     }
+
+#elif defined(__WIN__)
+    /*DWORD count = GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+    self_log("GetActiveProcessorCount: %lu", count);*/
+    DWORD count2 = GetMaximumProcessorCount(ALL_PROCESSOR_GROUPS);
+    self_log("GetMaximumProcessorCount: %lu", count2);
+
+    *ncpus = (int)count2;
+
+    /*DWORD lpbuf_len = 0UL;
+    GetLogicalProcessorInformationEx(RelationGroup, NULL, &lpbuf_len);
+    if (ERROR_INSUFFICIENT_BUFFER != GetLastError())
+       return false;
+
+    self_log("lpbuf_len = %lu; allocating...", lpbuf_len);
+    PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX lp = malloc(lpbuf_len);
+    if (!lp)
+        return false;
+
+    if (!GetLogicalProcessorInformationEx(RelationGroup, lp, &lpbuf_len)) {
+        self_log("ERROR: 2nd call failed: %lu", GetLastError());
+        _systest_safefree(&lp);
+        return false;
+    }
+
+    size_t ret_count = (lpbuf_len / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX));
+    self_log("got %zu structures, enumerating...", ret_count);
+    for (size_t n = 0; n < ret_count; n++) {
+        self_log("relationship: %d, size: %lu", lp[n].Relationship, lp[n].Size);
+        self_log("group: active count: %hu, max count: %hu", lp[n].Group.ActiveGroupCount,
+            lp[n].Group.MaximumGroupCount);
+        for (size_t g = 0; g < lp[n].Group.ActiveGroupCount; g++) {
+            self_log("group[%zu]: MaxCPUs: %x, ActiveCPUs: %x, afffinity: %llx", g,
+                lp[n].Group.GroupInfo[g].MaximumProcessorCount,
+                lp[n].Group.GroupInfo[g].ActiveProcessorCount,
+                lp[n].Group.GroupInfo[g].ActiveProcessorMask);
+        }
+    }
+
+    _systest_safefree(&lp);*/
 #else
 #error "not implemented"
 #endif
