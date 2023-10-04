@@ -46,6 +46,12 @@ bool check_sysconf(void) {
     bool retval = true;
     retval &= call_sysconf(_SC_2_VERSION, "popen() and pclose()");
     retval &= call_sysconf(_SC_HOST_NAME_MAX, "_SC_HOST_NAME_MAX");
+#if defined(_SC_NPROCESSORS_ONLN)
+    retval &= call_sysconf(_SC_NPROCESSORS_ONLN, "_SC_NPROCESSORS_ONLN");
+#endif
+#if defined(SC_NPROCESSORS_ONLN)
+    retval &= call_sysconf(SC_NPROCESSORS_ONLN, "SC_NPROCESSORS_ONLN");
+#endif
     return retval;
 #else
     /* https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/popen-wpopen */
@@ -919,6 +925,11 @@ bool systest_getcpucount(int* ncpus) {
     if (!ncpus)
         return false;
     *ncpus = 0;
+
+#if defined(CTL_HW)
+# pragma message("have CTL_HW")
+#endif
+
 #if defined(__MACOS__)
     static struct {
         const char* const name;
@@ -986,6 +997,24 @@ bool systest_getcpucount(int* ncpus) {
     }
 
     _systest_safefree(&lp);*/
+#elif defined(__linux__)
+# if defined(__HAVE_GET_NPROCS__)
+    int gnprocs = get_nprocs();
+    int gnprocsc = get_nprocs_conf();
+    self_log("get_nprocs: available: %d, configured: %d", gnprocs, gnprocsc);
+    //*ncpus = gnprocs;
+# endif
+#if defined(__HAVE_SYSCTL__)
+    int scprocs = 0;
+    size_t len = sizeof(int);
+    sysctlbyname("hw.logicalcpu", &scprocs, &len, NULL, 0);
+    self_log("__HAVE_SYSCTL__: logical cpus: %d", scprocs);
+    *ncpus = scprocs;
+#endif
+    long sconfprocs = sysconf(_SC_NPROCESSORS_ONLN);
+    long sconfprocsc = sysconf(_SC_NPROCESSORS_CONF);
+    self_log("sysconf: available: %ld, configured: %ld", sconfprocs, sconfprocsc);
+    *ncpus = (int)sconfprocs;
 #else
 #error "not implemented"
 #endif

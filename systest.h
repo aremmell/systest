@@ -104,8 +104,13 @@ typedef int optlen;
 #include <assert.h>
 
 #if !defined(__WIN__)
-# include <sys/attr.h>
-# include <sys/sysctl.h>
+# if defined(__linux__)
+#  include <sys/sysinfo.h>
+#  define __HAVE_GET_NPROCS__
+# else
+#  include <sys/sysctl.h>
+#  define __HAVE_SYSCTL__
+# endif
 #endif
 
 #if defined(__MACOS__)
