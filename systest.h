@@ -2,15 +2,28 @@
 #define _SYSTEST_H_INCLUDED
 
 #if !defined(_WIN32)
-# if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+# if defined(__APPLE__) && defined(__MACH__)
+#  define __MACOS__
+#  define _DARWIN_C_SOURCE
+# elif defined(__FreeBSD__) || defined(__DragonFly__)
 #  define __BSD__
 #  define _BSD_SOURCE
+# elif defined(__NetBSD__)
+#  define __BSD__
+#  define _NETBSD_SOURCE 1
+# elif defined(__OpenBSD__)
+#  define __BSD__
+#  pragma message("don't know what to define for OpenBSD")
+# elif defined(__linux__)
+#  if !defined(_GNU_SOURCE)
+#   define _GNU_SOURCE
+#  endif
+# else
+#  define _DEFAULT_SOURCE
+#  define _POSIX_C_SOURCE 200809L
+#  define _XOPEN_SOURCE 700
 # endif
 
-#define _DEFAULT_SOURCE
-#define _GNU_SOURCE
-#define _POSIX_C_SOURCE 200809L
-#define _XOPEN_SOURCE 700
 #define __STDC_WANT_LIB_EXT1__ 1
 
 #include <unistd.h>
