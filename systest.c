@@ -997,7 +997,7 @@ bool systest_getcpucount(int* ncpus) {
     }
 
     _systest_safefree(&lp);*/
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__BSD__)
 # if defined(__HAVE_GET_NPROCS__)
     int gnprocs = get_nprocs();
     int gnprocsc = get_nprocs_conf();
@@ -1005,18 +1005,31 @@ bool systest_getcpucount(int* ncpus) {
     //*ncpus = gnprocs;
 # endif
 #if defined(__HAVE_SYSCTL__)
-    int scprocs = 0;
+    /*int scprocs = 0; // hw.logicalcpu works on macOS, not on FreeBSD.
     size_t len = sizeof(int);
     sysctlbyname("hw.logicalcpu", &scprocs, &len, NULL, 0);
     self_log("__HAVE_SYSCTL__: logical cpus: %d", scprocs);
-    *ncpus = scprocs;
+    *ncpus = scprocs;*/
+    int mib[2] = {CTL_HW, HW_NCPU}; // hw.ncpu
+    u_int mib_size = 2;
+    int ret_value = 0;
+    size_t ret_size = sizeof(int);
+    if (-1 != sysctl(mib, mib_size, &ret_value, &ret_size, NULL, 0)) {
+        self_log("sysctl(%d, %d): %d", mib[0], mib[1], ret_value);
+    } else {
+        handle_error(errno, "sysctl");
+    }
 #endif
     long sconfprocs = sysconf(_SC_NPROCESSORS_ONLN);
     long sconfprocsc = sysconf(_SC_NPROCESSORS_CONF);
     self_log("sysconf: available: %ld, configured: %ld", sconfprocs, sconfprocsc);
     *ncpus = (int)sconfprocs;
+/*#elif defined(__BSD__)
+# if defined(__HAVE_SYSCTL__)
+
+# endif*/
 #else
-#error "not implemented"
+#error "CPU count not implemented for this platform"
 #endif
 
     return true;
