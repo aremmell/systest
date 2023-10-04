@@ -1004,7 +1004,7 @@ bool systest_getcpucount(int* ncpus) {
     self_log("get_nprocs: available: %d, configured: %d", gnprocs, gnprocsc);
     //*ncpus = gnprocs;
 # endif
-#if defined(__HAVE_SYSCTL__)
+# if defined(__HAVE_SYSCTL__)
     /*int scprocs = 0; // hw.logicalcpu works on macOS, not on FreeBSD.
     size_t len = sizeof(int);
     sysctlbyname("hw.logicalcpu", &scprocs, &len, NULL, 0);
@@ -1019,15 +1019,29 @@ bool systest_getcpucount(int* ncpus) {
     } else {
         handle_error(errno, "sysctl");
     }
-#endif
+# endif
+# if defined(__HAVE_SCHED__) && !defined(__ANDROID__)
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    if (sched_getaffinity(0, sizeof(cpu_set_t), &set)) {
+        handle_error(errno, "sched_getaffinity");
+    } else {
+        long gaprocs = CPU_COUNT(&set);
+        self_log("sched_getaffinity: %ld", gaprocs);
+    }
+# endif
     long sconfprocs = sysconf(_SC_NPROCESSORS_ONLN);
     long sconfprocsc = sysconf(_SC_NPROCESSORS_CONF);
     self_log("sysconf: available: %ld, configured: %ld", sconfprocs, sconfprocsc);
     *ncpus = (int)sconfprocs;
-/*#elif defined(__BSD__)
-# if defined(__HAVE_SYSCTL__)
-
-# endif*/
+#elif defined(__HAIKU__)
+    system_info si = {0};
+    status_t ret = get_system_info(&si);
+    if (B_OK != ret) {
+        handle_error(B_TO_POSIX_ERROR(ret), "get_system_info");
+    } else {
+        self_log("get_system_info: %u", si.cpu_count);
+    }
 #else
 #error "CPU count not implemented for this platform"
 #endif

@@ -107,6 +107,10 @@ typedef int optlen;
 # if defined(__linux__)
 #  include <sys/sysinfo.h>
 #  define __HAVE_GET_NPROCS__
+#  include <sched.h>
+#  define __HAVE_SCHED__
+# elif defined(__HAIKU__)
+#  include <OS.h>
 # else
 #  include <sys/sysctl.h>
 #  define __HAVE_SYSCTL__
