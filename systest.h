@@ -64,7 +64,7 @@ typedef socklen_t optlen;
 # define __WANT_STDC_SECURE_LIB__ 1
 # define WIN32_LEAN_AND_MEAN
 # define WINVER       0x0A00
-# define __WIN___WINNT 0x0A00
+# define _WIN32_WINNT 0x0A00
 # include <windows.h>
 # include <shlwapi.h>
 # include <direct.h>
