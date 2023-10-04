@@ -31,21 +31,18 @@
 #include <limits.h>
 #include <fcntl.h>
 #include <sys/utsname.h>
-
 #include <sys/statvfs.h>
 #include <sys/time.h>
-
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <poll.h>
 
 # if defined(__GLIBC__)
-# if (__GLIBC__ >= 2 && __GLIBC_MINOR__ > 19)  || \
-     (__GLIBC__ == 2 && __GLIBC_MINOR__ <= 19) && defined(_BSD_SOURCE)
-#  define __HAVE_UNISTD_READLINK__
-# endif
+#  if (__GLIBC__ >= 2 && __GLIBC_MINOR__ > 19)  || \
+      (__GLIBC__ == 2 && __GLIBC_MINOR__ <= 19) && defined(_BSD_SOURCE)
+#   define __HAVE_UNISTD_READLINK__
+#  endif
 # endif
 
 # define BAD_SOCKET -1
@@ -106,8 +103,12 @@ typedef int optlen;
 #include <stdbool.h>
 #include <assert.h>
 
-#if defined(__APPLE__)
-# define __MACOS__
+#if !defined(__WIN__)
+# include <sys/attr.h>
+# include <sys/sysctl.h>
+#endif
+
+#if defined(__MACOS__)
 # include <mach-o/dyld.h>
 #elif defined(__FreeBSD__)
 # include <sys/sysctl.h>
@@ -179,7 +180,7 @@ bool systest_gethostname(char hname[SYSTEST_MAXHOST]);
 /////////////////////////////// platform ///////////////////////////////////////
 
 bool systest_getuname(struct utsname* name);
-
+bool systest_getcpucount(int* ncpus);
 
 //
 // utility functions

@@ -371,6 +371,10 @@ int main(void) {
     ret = systest_haveinetconn();
     handle_result(ret, "test internet connection");
 
+    int cpus = 0;
+    ret = systest_getcpucount(&cpus);
+    handle_result(ret, "get logical core count");
+
     if (num_succeeded != num_attempted)
         printf("\t" REDB("--- %d/%d tests passed ---\n"), num_succeeded, num_attempted);
     else
@@ -908,6 +912,43 @@ bool systest_getuname(struct utsname* name) {
     strncpy(name->machine, mach_hw_str, strnlen(mach_hw_str, _SYS_NAMELEN));
 
 #endif // !__WIN__
+    return true;
+}
+
+bool systest_getcpucount(int* ncpus) {
+    if (!ncpus)
+        return false;
+#if defined(__MACOS__)
+    static struct {
+        const char* const name;
+        const char* const desc;
+        int mib[2];
+    } sysctl_entries[] = {
+        {"hw.ncpu", "the maximum number of processors that could be available this boot", {6, 3}},
+        {"hw.activecpu", "the number of processors currently available for executing threads", {6, 25}},
+        {"hw.physicalcpu", "the number of physical processors available in the current power mode", {6, 104}},
+        {"hw.physicalcpu_max", "the maximum number of physical processors that could be available this boot", {6, 105}},
+        {"hw.logicalcpu", "the number of logical processors available in the current power mode", {6, 106}},
+        {"hw.logicalcpu_max", "the maximum number of logical processors that could be available this boot", {6, 107}}
+    };
+
+    for (size_t n = 0; n < __countof(sysctl_entries); n++) {
+        u_int mib_size = __countof(sysctl_entries[n].mib);
+        int ret_value = 0;
+        size_t ret_size = sizeof(int);
+        if (-1 == sysctl(sysctl_entries[n].mib, mib_size, &ret_value, &ret_size, NULL, 0)) {
+            handle_error(errno, "sysctl");
+            continue;
+        }
+        self_log("%s: value = %d", sysctl_entries[n].name, ret_value);
+        if (n == 4) {
+            *ncpus = ret_value;
+        }
+    }
+#else
+#error "not implemented"
+#endif
+
     return true;
 }
 
